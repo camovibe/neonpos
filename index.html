@@ -1,1 +1,934 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05050b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="仓位终端">
+<meta name="description" content="NEON//POS 仓位计算 · 交易手册 · 多钱包">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>NEON//POS · 仓位终端</title>
+<style>
+:root{
+  --bg:#05050b;--panel:rgba(14,14,30,.82);--panel2:rgba(0,0,0,.38);
+  --line:rgba(0,240,255,.18);
+  --cyan:#00f0ff;--mag:#ff2bd6;--yel:#f8ef00;--grn:#00ff9c;--red:#ff3b6b;--vio:#8b5cff;
+  --txt:#e6f4ff;--dim:#6f7d9c;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,"Roboto Mono","PingFang SC","Microsoft YaHei",monospace;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{min-height:100vh;color:var(--txt);font-family:var(--mono);font-size:14px;line-height:1.45;
+  background:radial-gradient(1100px 600px at 110% -10%,rgba(255,43,214,.16),transparent 60%),
+             radial-gradient(900px 500px at -20% 10%,rgba(0,240,255,.14),transparent 60%),var(--bg);
+  overscroll-behavior-y:none;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,240,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.055) 1px,transparent 1px);
+  background-size:32px 32px;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),rgba(0,0,0,.15));mask-image:linear-gradient(to bottom,rgba(0,0,0,.9),rgba(0,0,0,.15))}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:100;
+  background:repeating-linear-gradient(to bottom,rgba(255,255,255,.022) 0,rgba(255,255,255,.022) 1px,transparent 1px,transparent 3px)}
+body.noscroll{overflow:hidden}
+#app{position:relative;z-index:1}
+
+/* ===== Top ===== */
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(var(--sat) + 10px) 16px 10px;background:rgba(5,5,11,.78);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.logo{font-size:17px;font-weight:900;letter-spacing:3px;line-height:1.1}
+.logo .a{color:var(--cyan);text-shadow:0 0 6px var(--cyan),0 0 18px rgba(0,240,255,.6)}
+.logo .s{color:var(--mag);text-shadow:0 0 6px var(--mag)}
+.logo small{display:block;font-size:8.5px;letter-spacing:4px;color:var(--dim);font-weight:400;margin-top:2px}
+.glitch{animation:glitch 5s infinite}
+@keyframes glitch{0%,91%,100%{transform:none}92%{transform:translate(-2px,1px);text-shadow:2px 0 var(--mag),-2px 0 var(--cyan)}94%{transform:translate(2px,-1px)}96%{transform:translate(-1px,0);text-shadow:-2px 0 var(--mag),2px 0 var(--cyan)}}
+.net{font-size:10px;letter-spacing:2px;padding:4px 8px;border:1px solid var(--grn);color:var(--grn)}
+.net.off{border-color:var(--yel);color:var(--yel)}
+
+main{max-width:640px;margin:0 auto;padding:14px 12px calc(var(--sab) + 96px)}
+.view{display:none}.view.active{display:block;animation:vin .28s ease}
+@keyframes vin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== Card ===== */
+.card{position:relative;background:var(--panel);border:1px solid var(--line);padding:14px;margin-bottom:12px;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.card::before{content:"";position:absolute;top:0;left:0;width:42px;height:2px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.card::after{content:"";position:absolute;right:0;bottom:0;width:42px;height:2px;background:var(--mag);box-shadow:0 0 10px var(--mag)}
+.label{font-size:11px;letter-spacing:2px;color:var(--cyan);opacity:.9;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px}.between{justify-content:space-between}
+.dim{color:var(--dim)}.up{color:var(--grn)}.down{color:var(--red)}
+.neon{color:var(--cyan);text-shadow:0 0 8px rgba(0,240,255,.7)}.magc{color:var(--mag)}.warnc{color:var(--yel)}
+.hero-num{font-size:34px;font-weight:900;margin:6px 0 2px;word-break:break-all;
+  background:linear-gradient(90deg,var(--cyan),#b8ffff 45%,var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 10px rgba(0,240,255,.35))}
+.hero-sub{font-size:13px;font-weight:700;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.metric{background:var(--panel2);border-left:2px solid rgba(0,240,255,.5);padding:8px 10px;min-width:0}
+.metric .k{font-size:10.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.metric .v{font-size:15px;font-weight:700;margin-top:2px;word-break:break-all}
+.metric.up{border-left-color:var(--grn)}.metric.up .v{color:var(--grn)}
+.metric.down{border-left-color:var(--red)}.metric.down .v{color:var(--red)}
+.metric.mag{border-left-color:var(--mag)}.metric.mag .v{color:var(--mag)}
+.metric.warnc{border-left-color:var(--yel)}.metric.warnc .v{color:var(--yel)}
+.kpi-main{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;margin-bottom:10px;padding:12px;
+  background:linear-gradient(135deg,rgba(0,240,255,.12),rgba(255,43,214,.09));border:1px solid rgba(0,240,255,.35)}
+.kpi-main .k{font-size:11px;color:var(--dim)}.kpi-main .v{font-size:21px;font-weight:900;word-break:break-all}
+
+/* ===== Form ===== */
+.fld{display:block;margin-bottom:12px}
+.fld>span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:6px}
+input,select,textarea{width:100%;font-family:var(--mono);font-size:16px;color:var(--txt);background:rgba(3,3,10,.88);
+  border:1px solid rgba(0,240,255,.25);padding:11px 12px;outline:none;border-radius:0;-webkit-appearance:none;appearance:none;
+  transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 0 14px rgba(0,240,255,.35)}
+input::placeholder,textarea::placeholder{color:#3d4763}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--cyan) 50%),linear-gradient(135deg,var(--cyan) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:32px}
+select option{background:#0b0b18}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+.inwrap{position:relative}.inwrap em{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;color:var(--dim);pointer-events:none}
+.inwrap input{padding-right:30px}
+
+/* ===== Buttons ===== */
+button{font-family:var(--mono);cursor:pointer;border:none;background:none;color:inherit}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;font-size:14px;font-weight:800;letter-spacing:1px;
+  color:#001014;background:var(--cyan);clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:transform .08s,filter .15s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{filter:grayscale(1) brightness(.45);cursor:not-allowed}
+.btn.ghost{background:rgba(0,240,255,.06);color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(0,240,255,.6)}
+.btn.mag{background:var(--mag);color:#fff}
+.btn.danger{background:var(--red);color:#fff}
+.btn.dghost{background:rgba(255,59,107,.06);color:var(--red);box-shadow:inset 0 0 0 1px rgba(255,59,107,.6)}
+.btn.sm{padding:7px 12px;font-size:12px}
+.btn.big{padding:15px 16px;font-size:15px}
+.seg{display:flex;border:1px solid rgba(0,240,255,.3);margin-bottom:12px}
+.seg button{flex:1;padding:11px 6px;font-size:13px;font-weight:700;color:var(--dim);letter-spacing:1px;transition:all .15s}
+.seg button+button{border-left:1px solid rgba(0,240,255,.2)}
+.seg button.on{color:#001014;background:var(--cyan);box-shadow:0 0 16px rgba(0,240,255,.5)}
+.seg.mini{margin:0}.seg.mini button{padding:5px 10px;font-size:11px}
+.seg.side{border:none;gap:10px;margin-bottom:4px}
+.seg.side button{padding:16px 6px;font-size:15px;font-weight:900}
+.seg.side button.long{border:1px solid rgba(0,255,156,.45);color:rgba(0,255,156,.65)}
+.seg.side button.short{border:1px solid rgba(255,59,107,.45);color:rgba(255,59,107,.65)}
+.seg.side button.long.on{background:var(--grn);color:#00140b;box-shadow:0 0 22px rgba(0,255,156,.55)}
+.seg.side button.short.on{background:var(--red);color:#fff;box-shadow:0 0 22px rgba(255,59,107,.55)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.chip{padding:6px 10px;font-size:12px;border:1px solid rgba(255,43,214,.35);color:#e0b3ff}
+.chip.on{background:var(--mag);color:#fff;border-color:var(--mag);box-shadow:0 0 12px rgba(255,43,214,.6)}
+.adv-toggle{width:100%;text-align:left;padding:10px 0 6px;color:var(--dim);font-size:12px;border-top:1px dashed rgba(0,240,255,.2);margin-top:4px}
+.adv{display:none;padding-top:8px}.adv.open{display:block}
+.entry{display:grid;grid-template-columns:30px 1fr 92px 36px;gap:6px;align-items:center;margin-bottom:8px}
+.eidx{font-size:12px;color:var(--mag);font-weight:900}
+.x{width:36px;height:44px;color:var(--red);border:1px solid rgba(255,59,107,.35);font-size:14px}
+.x.ph{border:none}
+.winfo{font-size:12px;color:var(--dim);margin:-4px 0 12px;padding:8px 10px;background:var(--panel2);border-left:2px solid var(--mag)}
+.winfo b{color:var(--txt)}
+.alert{padding:9px 11px;font-size:12.5px;margin-top:8px;border-left:3px solid;line-height:1.55}
+.alert.err{border-color:var(--red);background:rgba(255,59,107,.1);color:#ffb3c4}
+.alert.warn{border-color:var(--yel);background:rgba(248,239,0,.07);color:#fff7a0}
+.alert.ok{border-color:var(--grn);background:rgba(0,255,156,.07);color:#a8ffd9}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+.tbl th{color:var(--dim);font-weight:400;text-align:right;padding:6px;border-bottom:1px solid var(--line)}
+.tbl td{text-align:right;padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.04)}
+.tbl th:first-child,.tbl td:first-child{text-align:left;color:var(--mag)}
+.formula{font-size:11px;color:var(--dim);margin-top:10px;padding:8px 10px;border:1px dashed rgba(0,240,255,.2);line-height:1.75}
+.formula b{color:var(--cyan);font-weight:400}
+.exec-bar{position:sticky;bottom:calc(var(--sab) + 68px);z-index:5;display:grid;grid-template-columns:1fr 2.4fr;gap:10px;padding:10px 0 4px;
+  background:linear-gradient(to top,rgba(5,5,11,.95) 60%,transparent)}
+
+/* ===== Tabbar ===== */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
+  padding:6px 6px calc(var(--sab) + 6px);background:rgba(5,5,11,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--dim);font-size:11px;position:relative}
+.tab i{font-style:normal;font-size:20px;line-height:1}
+.tab.active{color:var(--cyan);text-shadow:0 0 10px var(--cyan)}
+.tab.active::before{content:"";position:absolute;top:-7px;left:28%;right:28%;height:2px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+
+/* ===== Wallet ===== */
+.w-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.w-name{font-size:16px;font-weight:800}
+.ccy{font-size:10px;padding:2px 6px;border:1px solid var(--mag);color:var(--mag);margin-left:6px;vertical-align:middle;letter-spacing:1px}
+.w-bal{font-size:20px;font-weight:900;text-align:right;word-break:break-all}
+.w-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.w-actions button{padding:9px 0;font-size:12px;border:1px solid rgba(0,240,255,.25);color:var(--cyan)}
+.w-actions button.d{color:var(--red);border-color:rgba(255,59,107,.3)}
+.sec-title{display:flex;justify-content:space-between;align-items:center;margin:18px 2px 10px;font-size:12px;letter-spacing:2px;color:var(--mag)}
+.empty{text-align:center;padding:30px 16px}
+.empty .big{font-size:22px;font-weight:900;color:var(--yel);text-shadow:0 0 12px rgba(248,239,0,.5);margin-bottom:8px;letter-spacing:2px}
+.empty p{color:var(--dim);margin-bottom:16px;font-size:13px}
+.rate{margin-top:12px;font-size:12px;color:var(--cyan);padding:9px 10px;border:1px dashed rgba(0,240,255,.3);cursor:pointer}
+.spark{width:100%;height:90px;display:block;margin-top:10px}
+
+/* ===== Trade ===== */
+.trade{border-left:3px solid var(--grn)}.trade.short{border-left-color:var(--red)}
+.t-head{display:flex;justify-content:space-between;gap:10px;cursor:pointer;margin-bottom:10px}
+.t-sym{font-size:16px;font-weight:900;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.t-meta{font-size:11px;color:var(--dim);margin-top:4px}
+.t-right{text-align:right;flex-shrink:0}
+.t-pnl{font-size:16px;font-weight:900;margin-top:5px}.t-r{font-size:11px;color:var(--dim)}
+.badge{font-size:10px;padding:2px 6px;letter-spacing:1px;font-weight:800}
+.badge.long{background:var(--grn);color:#00140b}.badge.short{background:var(--red);color:#fff}
+.badge.lev{border:1px solid var(--yel);color:var(--yel);font-weight:400}
+.status{font-size:10px;padding:2px 7px;border:1px solid;letter-spacing:1px;display:inline-block}
+.s-open{color:var(--cyan);border-color:var(--cyan);animation:pulse 1.6s infinite}
+.s-closed{color:var(--dim);border-color:var(--dim)}
+.s-cancel{color:#666;border-color:#444;text-decoration:line-through}
+@keyframes pulse{50%{box-shadow:0 0 10px var(--cyan)}}
+.t-detail{margin-top:10px;padding-top:10px;border-top:1px dashed rgba(0,240,255,.2)}
+.t-more{font-size:11px;text-align:center;margin-top:8px;color:var(--dim);cursor:pointer}
+.t-text{font-size:12.5px;white-space:pre-wrap;word-break:break-word;padding:8px 10px;background:var(--panel2);border-left:2px solid var(--vio);margin-top:8px}
+.t-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.t-actions .btn{flex:1 1 30%}
+.filter{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.filter button{flex-shrink:0;padding:7px 12px;font-size:12px;border:1px solid rgba(0,240,255,.25);color:var(--dim)}
+.filter button.on{color:#001014;background:var(--cyan)}
+
+/* ===== Modal / Toast ===== */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(0,0,5,.74);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center}
+.modal.hidden{display:none}
+.sheet{width:100%;max-width:640px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg,#0e0e22,#07070f);border-top:2px solid var(--cyan);box-shadow:0 -10px 40px rgba(0,240,255,.25);
+  padding:10px 16px calc(var(--sab) + 18px);animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet-bar{width:44px;height:4px;background:rgba(0,240,255,.4);margin:0 auto 12px}
+.m-title{font-size:17px;margin-bottom:14px;color:var(--cyan);letter-spacing:1px}
+.m-msg{font-size:13.5px;line-height:1.75;margin-bottom:14px}
+.m-actions{display:grid;grid-template-columns:1fr 1.6fr;gap:10px;margin-top:8px}
+.chk{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid rgba(0,240,255,.2);margin-bottom:6px;font-size:13px}
+.chk input{width:18px;height:18px;flex-shrink:0;-webkit-appearance:checkbox;appearance:auto;accent-color:var(--cyan);padding:0}
+.preview{padding:10px;background:var(--panel2);border-left:2px solid var(--cyan);font-size:13px;margin-bottom:12px;line-height:1.75}
+.flow-row{display:grid;grid-template-columns:auto auto 1fr 30px;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.flow-row .x{width:28px;height:28px}
+.dump{min-height:220px;font-size:11px}
+#toast{position:fixed;left:50%;top:calc(var(--sat) + 14px);transform:translate(-50%,-20px);opacity:0;z-index:90;padding:10px 16px;font-size:13px;
+  background:#0b0b1a;border:1px solid var(--cyan);color:var(--cyan);box-shadow:0 0 20px rgba(0,240,255,.4);transition:all .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.err{border-color:var(--red);color:var(--red);box-shadow:0 0 20px rgba(255,59,107,.4)}
+.storage{font-size:12px;padding:9px 10px;margin-bottom:10px;line-height:1.5}
+.storage.ok{color:var(--grn);background:rgba(0,255,156,.06)}.storage.err{color:var(--red);background:rgba(255,59,107,.08)}
+.btn-col{display:grid;gap:8px}
+.foot{text-align:center;font-size:10px;color:var(--dim);letter-spacing:2px;padding:10px 0 20px}
+.help{font-size:12px;color:var(--dim);line-height:1.85}.help b{color:var(--cyan);font-weight:400}
+@media (max-width:360px){.grid3{grid-template-columns:1fr 1fr}.hero-num{font-size:28px}.entry{grid-template-columns:26px 1fr 80px 34px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="logo glitch"><span class="a">NEON</span><span class="s">//</span>POS<small>POSITION TERMINAL</small></div>
+    <span id="net" class="net">● ONLINE</span>
+  </header>
+  <main>
+    <section id="view-dash" class="view active"></section>
+    <section id="view-calc" class="view"></section>
+    <section id="view-journal" class="view"></section>
+    <section id="view-set" class="view"></section>
+  </main>
+  <nav class="tabbar">
+    <button class="tab active" data-act="go" data-v="dash"><i>◈</i><span>资产</span></button>
+    <button class="tab" data-act="go" data-v="calc"><i>⌖</i><span>计算</span></button>
+    <button class="tab" data-act="go" data-v="journal"><i>▤</i><span>手册</span></button>
+    <button class="tab" data-act="go" data-v="set"><i>⚙</i><span>设置</span></button>
+  </nav>
+</div>
+<div id="modal" class="modal hidden"><div class="sheet"><div class="sheet-bar"></div><div id="modal-body"></div></div></div>
+<div id="toast"></div>
+<noscript><div style="padding:20px;color:#ff3b6b">需要启用 JavaScript</div></noscript>
+
+<script>
+(function(){
+'use strict';
+const APP_KEY='neonpos.data.v1', DRAFT_KEY='neonpos.draft.v1', VERSION='1.0.0';
+
+/* ================= 存储层（沙箱 / 隐私模式自动降级为内存） ================= */
+const Store=(function(){
+  let ok=false; const mem={};
+  try{ const ls=window.localStorage; const k='__neon_t'; ls.setItem(k,'1'); ls.removeItem(k); ok=true; }catch(e){ ok=false; }
+  return {
+    ok,
+    get(k){ if(ok){ try{ return window.localStorage.getItem(k); }catch(e){} } return Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null; },
+    set(k,v){ mem[k]=v; if(ok){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } } return true; },
+    del(k){ delete mem[k]; if(ok){ try{ window.localStorage.removeItem(k); }catch(e){} } }
+  };
+})();
+
+/* ================= 工具 ================= */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const isNum=n=>typeof n==='number'&&isFinite(n);
+function num(v){ if(v===null||v===undefined) return NaN; const s=String(v).replace(/,/g,'').trim(); if(s==='') return NaN; const n=Number(s); return isFinite(n)?n:NaN; }
+const nn=v=>isNum(v)?v:null;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function fmt(n,dp){ dp=dp==null?2:dp; if(!isNum(n)) return '--'; return n.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
+function fmtP(n){ if(!isNum(n)) return '--'; const a=Math.abs(n); const dp=a>=1000?2:a>=1?4:a>=0.01?6:8; return n.toLocaleString('en-US',{maximumFractionDigits:dp}); }
+function fmtQ(n){ if(!isNum(n)) return '--'; const a=Math.abs(n); const dp=a>=1000?2:a>=1?4:8; return n.toLocaleString('en-US',{maximumFractionDigits:dp}); }
+function fmtPct(n,dp){ dp=dp==null?2:dp; return isNum(n)?(n*100).toFixed(dp)+'%':'--'; }
+const SYM={USDT:'₮',CNY:'¥'};
+function money(n,ccy,dp){ if(!isNum(n)) return '--'; return (n<0?'-':'')+(SYM[ccy]||'')+fmt(Math.abs(n),dp); }
+function signMoney(n,ccy){ if(!isNum(n)) return '--'; return (n>0?'+':n<0?'-':'')+(SYM[ccy]||'')+fmt(Math.abs(n)); }
+const pn=v=>!isNum(v)?'':v>=0?'up':'down';
+function dt(ts){ if(!ts) return '--'; const d=new Date(ts); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+function m(k,v,cls){ return '<div class="metric '+(cls||'')+'"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+let toastT=null;
+function toast(msg,type){ const el=$('#toast'); if(!el) return; el.textContent=msg; el.className='show '+(type||'ok'); clearTimeout(toastT); toastT=setTimeout(()=>{el.className='';},2400); }
+
+/* ================= 数据 ================= */
+function defaultSettings(){ return {rate:7.2,displayCcy:'USDT',riskPct:1,marginPct:10,mmr:0.5,fee:0.05}; }
+function migrate(d){
+  d=(d&&typeof d==='object')?d:{};
+  const st=Object.assign(defaultSettings(),d.settings||{});
+  st.rate=num(st.rate)>0?num(st.rate):7.2; st.displayCcy=st.displayCcy==='CNY'?'CNY':'USDT';
+  return {
+    v:1, settings:st,
+    wallets:(Array.isArray(d.wallets)?d.wallets:[]).filter(w=>w&&w.id).map(w=>Object.assign({},w,{initial:Number(w.initial)||0,ccy:w.ccy==='CNY'?'CNY':'USDT',name:String(w.name||'钱包')})),
+    flows:(Array.isArray(d.flows)?d.flows:[]).filter(f=>f&&f.id).map(f=>Object.assign({},f,{amount:Number(f.amount)||0})),
+    trades:(Array.isArray(d.trades)?d.trades:[]).filter(t=>t&&t.id&&t.calc&&Array.isArray(t.entries)).map(t=>Object.assign({},t,{entries:t.entries.map(e=>({price:Number(e.price),weight:Number(e.weight)}))}))
+  };
+}
+function load(){ try{ const raw=Store.get(APP_KEY); return migrate(raw?JSON.parse(raw):null); }catch(e){ console.warn(e); return migrate(null); } }
+let S=load();
+function save(){ if(!Store.set(APP_KEY,JSON.stringify(S))) toast('写入存储失败，请立即导出备份','err'); }
+const findW=id=>S.wallets.find(w=>w.id===id);
+const findT=id=>S.trades.find(t=>t.id===id);
+const tccy=t=>t.ccy||(findW(t.walletId)||{}).ccy||'USDT';
+function conv(a,from,to){ if(!isNum(a)) return 0; if(from===to) return a; const r=S.settings.rate||7.2; return from==='USDT'&&to==='CNY'?a*r:a/r; }
+
+function walletStats(w){
+  const flows=S.flows.filter(f=>f.walletId===w.id).reduce((a,f)=>a+f.amount,0);
+  const ts=S.trades.filter(t=>t.walletId===w.id);
+  const closed=ts.filter(t=>t.status==='closed'), open=ts.filter(t=>t.status==='open');
+  const realized=closed.reduce((a,t)=>a+(Number(t.realizedPnl)||0),0);
+  const usedMargin=open.reduce((a,t)=>a+(Number(t.calc.margin)||0),0);
+  const base=w.initial+flows, balance=base+realized;
+  return {flows,base,realized,usedMargin,balance,available:balance-usedMargin,openCount:open.length,closedCount:closed.length,pnlPct:base>0?realized/base:NaN};
+}
+function totals(){
+  const d=S.settings.displayCcy; let bal=0,real=0,used=0,avail=0,open=0;
+  S.wallets.forEach(w=>{ const s=walletStats(w); bal+=conv(s.balance,w.ccy,d); real+=conv(s.realized,w.ccy,d); used+=conv(s.usedMargin,w.ccy,d); avail+=conv(s.available,w.ccy,d); open+=s.openCount; });
+  return {bal,real,used,avail,open,d};
+}
+function journalStats(wid){
+  const d=wid==='all'?S.settings.displayCcy:((findW(wid)||{}).ccy||'USDT');
+  const closed=S.trades.filter(t=>t.status==='closed'&&(wid==='all'||t.walletId===wid)).sort((a,b)=>(a.closedAt||0)-(b.closedAt||0));
+  let wins=0,gw=0,gl=0,sumR=0,nR=0,cum=0,peak=0,mdd=0; const pts=[0];
+  closed.forEach(t=>{
+    const raw=Number(t.realizedPnl)||0, p=conv(raw,tccy(t),d);
+    if(p>0){wins++;gw+=p;} else gl+=-p;
+    if(t.calc&&t.calc.risk>0){ sumR+=raw/t.calc.risk; nR++; }
+    cum+=p; pts.push(cum); peak=Math.max(peak,cum); mdd=Math.max(mdd,peak-cum);
+  });
+  return {ccy:d,n:closed.length,wins,winRate:closed.length?wins/closed.length:NaN,total:cum,avgR:nR?sumR/nR:NaN,pf:gl>0?gw/gl:(gw>0?Infinity:NaN),mdd,pts};
+}
+
+/* ================= 核心计算引擎 ================= */
+/* 分批占比 = 各批「仓位价值」占比；加权均价 = 总价值 / 总数量（调和加权）
+   风险模式：仓位价值 N = 风险预算 / (止损距离d + 开仓费率 + 平仓费率×止损价/均价)
+   保证金模式：N = 权益×% × 杠杆
+   强平价（线性U本位近似）：多 P=(N−C)/(Q×(1−MMR))；空 P=(N+C)/(Q×(1+MMR))；C=逐仓保证金 / 全仓可用余额 */
+function compute(inp,equity,available){
+  const R={ok:false,errors:[],warns:[],dangers:[]};
+  const side=inp.side==='short'?-1:1;
+  const lev=isNum(inp.lev)&&inp.lev>=1?inp.lev:1;
+  R.lev=lev; R.isContract=lev>1; R.side=side;
+  const f=(isNum(inp.fee)&&inp.fee>=0?inp.fee:0)/100;
+  const mmr=(isNum(inp.mmr)&&inp.mmr>=0?inp.mmr:0)/100;
+  if(!(equity>0)) R.errors.push('钱包权益 ≤ 0，请先设置本金或入金');
+  if(!(isNum(inp.pct)&&inp.pct>0)) R.errors.push(inp.mode==='risk'?'请填写单笔风险 %':'请填写保证金占比 %');
+  if(isNum(inp.lev)&&inp.lev<1) R.errors.push('杠杆需 ≥ 1');
+  const es=inp.entries.map((e,i)=>({i,price:e.price,weight:e.weight})).filter(e=>isNum(e.price)&&e.price>0);
+  if(!es.length){ R.errors.push('请填写至少一个入场价'); return R; }
+  const wv=e=>isNum(e.weight)&&e.weight>0?e.weight:0;
+  const wsum=es.reduce((a,e)=>a+wv(e),0);
+  es.forEach(e=>{ e.w=wsum>0?wv(e)/wsum:1/es.length; });
+  if(wsum<=0) R.warns.push('未填写批次占比，已按均分计算');
+  else if(Math.abs(wsum-100)>0.01) R.warns.push('批次占比合计 '+fmt(wsum,2)+'%，已自动归一化为 100%');
+  if(es.length<inp.entries.length) R.warns.push('部分批次未填入场价，已忽略');
+  if(es.some(e=>e.w===0)) R.warns.push('存在占比为 0 的批次');
+  const avg=1/es.reduce((a,e)=>a+e.w/e.price,0); R.avg=avg;
+  const stop=inp.stop, hasStop=isNum(stop)&&stop>0; let d=NaN;
+  if(hasStop){
+    d=side*(avg-stop)/avg;
+    if(d<=0) R.errors.push(side>0?'做多：止损价必须低于入场均价':'做空：止损价必须高于入场均价');
+    else es.forEach(e=>{ if(side*(e.price-stop)<=0) R.errors.push('第 '+(e.i+1)+' 批入场价已越过止损价'); });
+  } else if(inp.mode==='risk') R.errors.push('风险模式需填写止损价（全部批次共用）');
+  else R.warns.push('未设置止损：无法评估风险与强平安全性');
+  if(R.errors.length) return R;
+
+  let N;
+  if(inp.mode==='risk'){ R.riskBudget=equity*inp.pct/100; N=R.riskBudget/(d+f*(1+stop/avg)); }
+  else { R.marginBudget=equity*inp.pct/100; N=R.marginBudget*lev; }
+  const qty=N/avg, margin=N/lev;
+  Object.assign(R,{N,qty,margin,d,stop:hasStop?stop:NaN,equity});
+  R.feeOpen=f*N;
+  if(hasStop){ R.feeStop=f*qty*stop; R.loss=qty*Math.abs(avg-stop)+R.feeOpen+R.feeStop; R.lossPct=R.loss/equity; R.roeStop=-R.loss/margin; }
+  const tp=inp.tp;
+  if(isNum(tp)&&tp>0){
+    if(side*(tp-avg)<=0) R.warns.push(side>0?'做多：止盈价应高于均价（已忽略）':'做空：止盈价应低于均价（已忽略）');
+    else{
+      R.tp=tp; R.feeTp=f*qty*tp; R.profit=qty*Math.abs(tp-avg)-R.feeOpen-R.feeTp; R.roeTp=R.profit/margin; R.profitPct=R.profit/equity;
+      if(hasStop){ R.rr=Math.abs(tp-avg)/Math.abs(avg-stop); R.rrNet=R.profit/R.loss; if(R.rr<1.5) R.warns.push('盈亏比 1:'+R.rr.toFixed(2)+' 偏低（建议 ≥ 1.5）'); }
+    }
+  }
+  let cN=0,cQ=0;
+  R.batches=es.map(e=>{ const n=N*e.w,q=n/e.price; cN+=n; cQ+=q; return {i:e.i,price:e.price,w:e.w,n,q,m:n/lev,cumAvg:cN/cQ,loss:hasStop?q*Math.abs(e.price-stop):NaN}; });
+
+  if(lev>1){
+    const Cc=inp.marginMode==='cross'?Math.max(available,margin):margin;
+    R.collateral=Cc;
+    const liq=side>0?(N-Cc)/(qty*(1-mmr)):(N+Cc)/(qty*(1+mmr));
+    R.liq=liq>0?liq:NaN;
+    if(hasStop){
+      if(isNum(R.liq)){
+        if(side*(R.liq-stop)>=0) R.dangers.push('⚠ 强平价 '+fmtP(R.liq)+' 会先于止损 '+fmtP(stop)+' 触发！请降低杠杆 / 改全仓 / 追加保证金');
+        else if(Math.abs(R.liq-stop)/avg<0.01) R.warns.push('强平价距止损不足 1%，插针风险较高');
+      }
+      const r=stop/avg, den=side>0?1-r*(1-mmr):r*(1+mmr)-1;
+      R.safeLev=den>0?1/den:Infinity;
+    }
+  }
+  if(margin>available) R.dangers.push('所需保证金 '+fmt(margin)+' 超出钱包可用余额 '+fmt(available));
+  if(inp.mode==='margin'&&hasStop&&R.lossPct>0.05) R.warns.push('止损将亏损权益的 '+fmtPct(R.lossPct)+'，超过 5%');
+  if(inp.mode==='risk'&&inp.pct>5) R.warns.push('单笔风险 > 5%，属于激进仓位');
+  if(lev>=50) R.warns.push('杠杆 ≥ 50x：交易所阶梯维持保证金率会更高，实际强平价更近');
+  R.ok=true; return R;
+}
+function closePnl(t,exit,fills){
+  const f=(Number(t.fee)||0)/100; let N=0,q=0;
+  t.entries.forEach((e,i)=>{ if(fills.indexOf(i)>-1){ const n=t.calc.N*e.weight/100; N+=n; q+=n/e.price; } });
+  if(!(q>0)||!isNum(exit)) return {pnl:0,fees:0,N:0,q:0,avg:NaN};
+  const avg=N/q, side=t.side==='short'?-1:1;
+  const fees=f*N+f*q*exit;
+  return {pnl:side*q*(exit-avg)-fees,fees,N,q,avg};
+}
+
+/* ================= 计算器状态 ================= */
+function newCalc(){ return {walletId:'',symbol:'BTCUSDT',side:'long',mode:'risk',pct:String(S.settings.riskPct),lev:'',marginMode:'isolated',mmr:'',fee:'',entries:[{price:'',weight:'100'}],stop:'',tp:'',reason:''}; }
+function loadDraft(){ try{ const d=JSON.parse(Store.get(DRAFT_KEY)||'null'); if(d&&Array.isArray(d.entries)&&d.entries.length) return Object.assign(newCalc(),d); }catch(e){} return newCalc(); }
+let C=loadDraft();
+function saveDraft(){ Store.set(DRAFT_KEY,JSON.stringify(C)); }
+let advOpen=false, lastCalc=null;
+const PCT_CHIPS={risk:[0.5,1,2,3,5],margin:[5,10,20,30,50]};
+const LEV_CHIPS=[1,2,3,5,10,20,50,100];
+
+/* ================= 视图路由 ================= */
+let curView='dash';
+function go(v){
+  curView=v;
+  $$('.view').forEach(e=>e.classList.toggle('active',e.id==='view-'+v));
+  $$('.tab').forEach(e=>e.classList.toggle('active',e.dataset.v===v));
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  const v=curView;
+  try{
+    if(v==='dash') renderDash(); else if(v==='calc') renderCalc(); else if(v==='journal') renderJournal(); else renderSettings();
+  }catch(e){ console.error(e); const el=$('#view-'+v); if(el) el.innerHTML='<div class="alert err">渲染出错：'+esc(e.message)+'<br>可在设置中导出备份后清空数据重试</div>'; }
+}
+
+/* ================= 资产页 ================= */
+function sparkSVG(pts){
+  const W=320,H=90,P=6; const min=Math.min(0,...pts), max=Math.max(0,...pts), rng=(max-min)||1;
+  const x=i=>P+(W-2*P)*i/Math.max(1,pts.length-1), y=v=>H-P-(H-2*P)*(v-min)/rng;
+  const line=pts.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+','+y(v).toFixed(1)).join('');
+  const area=line+'L'+x(pts.length-1).toFixed(1)+','+y(0).toFixed(1)+'L'+x(0).toFixed(1)+','+y(0).toFixed(1)+'Z';
+  const c=pts[pts.length-1]>=0?'#00ff9c':'#ff3b6b', gid='g'+Math.random().toString(36).slice(2,8);
+  return '<svg class="spark" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+c+'" stop-opacity=".38"/><stop offset="1" stop-color="'+c+'" stop-opacity="0"/></linearGradient></defs>'
+    +'<line x1="0" x2="'+W+'" y1="'+y(0).toFixed(1)+'" y2="'+y(0).toFixed(1)+'" stroke="rgba(255,255,255,.2)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>'
+    +'<path d="'+area+'" fill="url(#'+gid+')"/><path d="'+line+'" fill="none" stroke="'+c+'" stroke-width="2" vector-effect="non-scaling-stroke" style="filter:drop-shadow(0 0 4px '+c+')"/></svg>';
+}
+function walletCard(w){
+  const s=walletStats(w);
+  return '<div class="card wallet"><div class="w-head"><div><div class="w-name">'+esc(w.name)+'<span class="ccy">'+w.ccy+'</span></div>'
+    +'<div class="t-meta">持仓 '+s.openCount+' · 已平 '+s.closedCount+(w.note?' · '+esc(w.note):'')+'</div></div>'
+    +'<div><div class="w-bal">'+money(s.balance,w.ccy)+'</div><div class="'+pn(s.realized)+'" style="text-align:right;font-size:12px;font-weight:700">'+signMoney(s.realized,w.ccy)+(isNum(s.pnlPct)?' ('+(s.pnlPct>=0?'+':'')+fmtPct(s.pnlPct)+')':'')+'</div></div></div>'
+    +'<div class="grid3">'+m('本金+净入金',fmt(s.base))+m('占用保证金',fmt(s.usedMargin),'mag')+m('可用',fmt(s.available),s.available<0?'down':'')+'</div>'
+    +'<div class="w-actions"><button data-act="calcWallet" data-id="'+w.id+'">⌖ 计算</button><button data-act="flowWallet" data-id="'+w.id+'">⇅ 资金</button><button data-act="editWallet" data-id="'+w.id+'">✎ 编辑</button><button class="d" data-act="delWallet" data-id="'+w.id+'">✕ 删除</button></div></div>';
+}
+function renderDash(){
+  const T=totals(), d=T.d, js=journalStats('all');
+  let h='<div class="card"><div class="row between"><span class="label" style="margin:0">// TOTAL ASSETS 总资产</span>'
+    +'<div class="seg mini">'+['USDT','CNY'].map(c=>'<button data-act="setDisp" data-ccy="'+c+'" class="'+(c===d?'on':'')+'">'+c+'</button>').join('')+'</div></div>'
+    +'<div class="hero-num">'+money(T.bal,d)+'</div>'
+    +'<div class="hero-sub '+pn(T.real)+'">已实现盈亏 '+signMoney(T.real,d)+'</div>'
+    +'<div class="grid3">'+m('占用保证金',money(T.used,d),'mag')+m('可用',money(T.avail,d),T.avail<0?'down':'')+m('持仓中',T.open+' 笔')+'</div>'
+    +'<div class="rate" data-act="rate">⇄ 1 USDT = '+S.settings.rate+' CNY <span class="dim">· 点击修改汇率</span></div></div>';
+  if(js.pts.length>1) h+='<div class="card"><div class="label">// PNL CURVE 累计已实现盈亏（'+d+'）</div>'+sparkSVG(js.pts)
+    +'<div class="grid3" style="margin-top:10px">'+m('胜率',fmtPct(js.winRate,1),js.winRate>=.5?'up':'')+m('平均R',isNum(js.avgR)?(js.avgR>=0?'+':'')+js.avgR.toFixed(2)+'R':'--',pn(js.avgR))+m('最大回撤',js.mdd>0?'-'+money(js.mdd,d):'--','down')+'</div></div>';
+  h+='<div class="sec-title"><span>// WALLETS 分钱包 ×'+S.wallets.length+'</span><button class="btn sm" data-act="addWallet">+ 新钱包</button></div>';
+  if(!S.wallets.length) h+='<div class="card empty"><div class="big">NO WALLET</div><p>创建第一个钱包，开启你的仓位终端</p><button class="btn" data-act="addWallet">+ 创建钱包</button></div>';
+  else h+=S.wallets.map(walletCard).join('');
+  $('#view-dash').innerHTML=h;
+}
+
+/* ================= 计算页 ================= */
+function renderCalc(){
+  const el=$('#view-calc');
+  if(!S.wallets.length){ el.innerHTML='<div class="card empty"><div class="big">⚠ NO WALLET</div><p>计算前请先创建一个钱包</p><button class="btn" data-act="addWallet">+ 创建钱包</button></div>'; return; }
+  if(!findW(C.walletId)) C.walletId=S.wallets[0].id;
+  const st=S.settings;
+  el.innerHTML=
+  '<div class="card"><div class="label">// TARGET 目标</div>'
+  +'<label class="fld"><span>钱包</span><select id="c-wallet">'+S.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===C.walletId?' selected':'')+'>'+esc(w.name)+' · '+w.ccy+'</option>').join('')+'</select></label>'
+  +'<div id="c-winfo" class="winfo"></div>'
+  +'<label class="fld"><span>标的</span><input id="c-symbol" value="'+esc(C.symbol)+'" placeholder="BTCUSDT / ETHUSDT / 600519" autocapitalize="characters" autocomplete="off"></label>'
+  +'<div class="seg side"><button data-act="side" data-side="long" class="long'+(C.side==='long'?' on':'')+'">▲ LONG 做多</button><button data-act="side" data-side="short" class="short'+(C.side==='short'?' on':'')+'">▼ SHORT 做空</button></div></div>'
+
+  +'<div class="card"><div class="label">// SIZING 仓位</div>'
+  +'<div class="seg"><button data-act="mode" data-mode="risk">风险比例</button><button data-act="mode" data-mode="margin">保证金比例</button></div>'
+  +'<label class="fld"><span id="c-pct-label"></span><div class="inwrap"><input id="c-pct" inputmode="decimal" value="'+esc(C.pct)+'" placeholder="0"><em>%</em></div></label>'
+  +'<div class="chips" id="c-pct-chips"></div>'
+  +'<label class="fld"><span>永续杠杆（选填，不填 = 1x 现货）</span><div class="inwrap"><input id="c-lev" inputmode="decimal" value="'+esc(C.lev)+'" placeholder="1"><em>x</em></div></label>'
+  +'<div class="chips">'+LEV_CHIPS.map(v=>'<button class="chip" data-act="lev" data-val="'+v+'">'+v+'x</button>').join('')+'</div>'
+  +'<div id="c-mmwrap"><div class="seg"><button data-act="mm" data-mm="isolated" class="'+(C.marginMode==='isolated'?'on':'')+'">逐仓 ISOLATED</button><button data-act="mm" data-mm="cross" class="'+(C.marginMode==='cross'?'on':'')+'">全仓 CROSS</button></div></div>'
+  +'<button class="adv-toggle" data-act="adv">⚙ 高级参数：维持保证金率 / 手续费 '+(advOpen?'▴':'▾')+'</button>'
+  +'<div id="c-adv" class="adv'+(advOpen?' open':'')+'"><div class="grid2">'
+  +'<label class="fld"><span>维持保证金率</span><div class="inwrap"><input id="c-mmr" inputmode="decimal" value="'+esc(C.mmr)+'" placeholder="'+st.mmr+'"><em>%</em></div></label>'
+  +'<label class="fld"><span>单边 Taker 费率</span><div class="inwrap"><input id="c-fee" inputmode="decimal" value="'+esc(C.fee)+'" placeholder="'+st.fee+'"><em>%</em></div></label>'
+  +'</div><div class="help">留空使用默认值（设置页可改）。手续费按 开仓 + 平仓 双边计入风险。</div></div></div>'
+
+  +'<div class="card"><div class="row between" style="margin-bottom:10px"><span class="label" style="margin:0">// ENTRIES 分批入场</span><span class="row"><button class="btn sm ghost" data-act="split">均分</button><button class="btn sm" data-act="addEntry">+ 加一批</button></span></div>'
+  +'<div class="help" style="margin-bottom:8px">占比 = 该批占总仓位价值的比例</div>'
+  +'<div id="c-entries"></div>'
+  +'<label class="fld" style="margin-top:6px"><span>止损价（全部批次共用）</span><input id="c-stop" inputmode="decimal" value="'+esc(C.stop)+'" placeholder="必填（风险模式）"></label>'
+  +'<label class="fld"><span>止盈价（选填，用于 R:R）</span><input id="c-tp" inputmode="decimal" value="'+esc(C.tp)+'" placeholder="选填"></label></div>'
+
+  +'<div id="c-result"></div>'
+  +'<div class="card"><label class="fld" style="margin:0"><span>入场理由 / 交易计划备注</span><textarea id="c-reason" rows="3" placeholder="例如：4H 回踩 Vegas 通道 + 放量长下影">'+esc(C.reason)+'</textarea></label></div>'
+  +'<div class="exec-bar"><button class="btn ghost" data-act="resetCalc">重置</button><button class="btn big" id="c-exec" data-act="execute">✓ 标记已执行 → 入手册</button></div>';
+  renderEntries(); updateModeUI(); updateCalc();
+}
+function renderEntries(){
+  const box=$('#c-entries'); if(!box) return;
+  box.innerHTML=C.entries.map((e,i)=>'<div class="entry"><span class="eidx">#'+(i+1)+'</span>'
+    +'<input data-i="'+i+'" data-k="price" inputmode="decimal" placeholder="入场价" value="'+esc(e.price)+'">'
+    +'<div class="inwrap"><input data-i="'+i+'" data-k="weight" inputmode="decimal" placeholder="占比" value="'+esc(e.weight)+'"><em>%</em></div>'
+    +(C.entries.length>1?'<button class="x" data-act="delEntry" data-i="'+i+'">✕</button>':'<span class="x ph"></span>')+'</div>').join('');
+}
+function splitWeights(){ const n=C.entries.length; if(!n) return; const base=Math.floor(10000/n)/100; C.entries.forEach((e,i)=>{ e.weight=String(i===n-1?+(100-base*(n-1)).toFixed(2):base); }); }
+function updateModeUI(){
+  const risk=C.mode==='risk';
+  const lb=$('#c-pct-label'); if(!lb) return;
+  lb.textContent=risk?'单笔风险：打到止损最多亏损权益的 %':'保证金占比：投入权益的 % 作为保证金';
+  $('#c-pct-chips').innerHTML=PCT_CHIPS[C.mode].map(v=>'<button class="chip" data-act="pct" data-val="'+v+'">'+v+'%</button>').join('');
+  $$('#view-calc [data-act=mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===C.mode));
+  syncChips();
+}
+function syncChips(){
+  $$('#view-calc [data-act=lev]').forEach(b=>b.classList.toggle('on',num(C.lev)===num(b.dataset.val)||(C.lev===''&&b.dataset.val==='1')));
+  $$('#view-calc [data-act=pct]').forEach(b=>b.classList.toggle('on',num(C.pct)===num(b.dataset.val)));
+}
+function getInput(){
+  const st=S.settings, mm=num(C.mmr), fe=num(C.fee);
+  return {side:C.side,mode:C.mode,pct:num(C.pct),lev:num(C.lev),marginMode:C.marginMode,mmr:isNum(mm)?mm:st.mmr,fee:isNum(fe)?fe:st.fee,
+    entries:C.entries.map(e=>({price:num(e.price),weight:num(e.weight)})),stop:num(C.stop),tp:num(C.tp)};
+}
+function updateCalc(){
+  const w=findW(C.walletId); if(!w||!$('#c-result')) return;
+  const ws=walletStats(w);
+  $('#c-winfo').innerHTML='权益 <b>'+money(ws.balance,w.ccy)+'</b> · 可用 <b class="'+(ws.available<0?'down':'')+'">'+money(ws.available,w.ccy)+'</b> · 持仓 '+ws.openCount;
+  $('#c-mmwrap').style.display=num(C.lev)>1?'':'none';
+  const R=compute(getInput(),ws.balance,ws.available); lastCalc=R;
+  $('#c-result').innerHTML=resultHTML(R,w.ccy);
+  $('#c-exec').disabled=!R.ok;
+}
+function resultHTML(R,ccy){
+  const alerts=R.dangers.map(x=>'<div class="alert err">'+esc(x)+'</div>').join('')
+    +R.errors.map(x=>'<div class="alert err">✕ '+esc(x)+'</div>').join('')
+    +R.warns.map(x=>'<div class="alert warn">! '+esc(x)+'</div>').join('');
+  if(!R.ok) return '<div class="card"><div class="label">// OUTPUT 计算结果</div>'+(alerts||'<div class="dim">填写参数后实时计算</div>')+'</div>';
+  const liqDanger=R.dangers.some(x=>x.indexOf('强平')>-1);
+  const mmText=R.isContract?(C.marginMode==='cross'?'全仓':'逐仓'):'现货';
+  let h='<div class="card"><div class="label">// OUTPUT 计算结果</div>'
+   +'<div class="kpi-main"><div><div class="k">所需保证金（入场订金额）</div><div class="v neon">'+money(R.margin,ccy)+'</div></div><div><div class="k">总仓位价值</div><div class="v">'+money(R.N,ccy)+'</div></div></div>'
+   +'<div class="grid2">'
+   +m('加权均价',fmtP(R.avg))+m('数量',fmtQ(R.qty))
+   +m('止损距离',fmtPct(R.d))+m('杠杆',R.lev+'x · '+mmText)
+   +m('止损亏损（含费）',isNum(R.loss)?'-'+money(R.loss,ccy):'--','down')+m('亏损占权益',fmtPct(R.lossPct),'down')
+   +m('止盈盈利（含费）',isNum(R.profit)?'+'+money(R.profit,ccy):'--','up')+m('盈亏比 R:R',isNum(R.rr)?'1 : '+R.rr.toFixed(2):'--',!isNum(R.rr)?'':R.rr>=2?'up':R.rr>=1.5?'':'warnc')
+   +(R.isContract?m('预估强平价',isNum(R.liq)?fmtP(R.liq):'无强平',liqDanger?'down':'mag'):'')
+   +(R.isContract&&R.safeLev!=null?m('逐仓安全杠杆上限',isFinite(R.safeLev)?R.safeLev.toFixed(1)+'x':'∞',R.lev>R.safeLev?'down':'up'):'')
+   +m('止损 ROE',fmtPct(R.roeStop),'down')+m('止盈 ROE',fmtPct(R.roeTp),'up')
+   +m('预估手续费',money(R.feeOpen+(R.feeStop||0),ccy))+m('盈利占权益',fmtPct(R.profitPct),'up')
+   +'</div>'+alerts
+   +'<div class="formula">'+(C.mode==='risk'
+      ?'<b>风险模式</b>：风险预算 '+money(R.riskBudget,ccy)+' = 权益 × '+C.pct+'%<br>仓位价值 = 风险预算 ÷ (止损距离 '+fmtPct(R.d)+' + 双边手续费)<br>保证金 = 仓位价值 ÷ '+R.lev+'x'
+      :'<b>保证金模式</b>：保证金 '+money(R.marginBudget,ccy)+' = 权益 × '+C.pct+'%<br>仓位价值 = 保证金 × '+R.lev+'x')
+   +(R.isContract?'<br><b>强平</b>：'+(C.marginMode==='cross'?'全仓按可用余额 '+fmt(R.collateral)+' 作为抵押估算':'逐仓按本单保证金估算')+'，未计资金费率与阶梯 MMR':'')+'</div></div>';
+  h+='<div class="card"><div class="label">// BATCHES 分批明细 · 每批倒算订金额</div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>入场价</th><th>占比</th><th>保证金</th><th>价值</th><th>数量</th><th>累计均价</th><th>止损亏</th></tr></thead><tbody>'
+   +R.batches.map(b=>'<tr><td>'+(b.i+1)+'</td><td>'+fmtP(b.price)+'</td><td>'+(b.w*100).toFixed(1)+'%</td><td class="neon">'+fmt(b.m)+'</td><td>'+fmt(b.n)+'</td><td>'+fmtQ(b.q)+'</td><td>'+fmtP(b.cumAvg)+'</td><td class="down">'+(isNum(b.loss)?'-'+fmt(b.loss):'--')+'</td></tr>').join('')
+   +'</tbody></table></div></div>';
+  return h;
+}
+function execute(){
+  const R=lastCalc, w=findW(C.walletId);
+  if(!R||!R.ok||!w){ toast('参数不完整','err'); return; }
+  const inp=getInput(), sym=(C.symbol||'UNKNOWN').trim().toUpperCase()||'UNKNOWN';
+  const html='<h3 class="m-title">✓ 确认执行并入册</h3><div class="m-msg">'
+    +'<b class="'+(C.side==='long'?'up':'down')+'">'+(C.side==='long'?'▲ 做多':'▼ 做空')+' '+esc(sym)+'</b> · '+R.lev+'x'+(R.isContract?(C.marginMode==='cross'?' 全仓':' 逐仓'):' 现货')+'<br>'
+    +'钱包：'+esc(w.name)+'（'+w.ccy+'）<br>'
+    +'均价 '+fmtP(R.avg)+' · 止损 '+fmtP(R.stop)+(isNum(R.tp)?' · 止盈 '+fmtP(R.tp):'')+'<br>'
+    +'保证金 <b class="neon">'+money(R.margin,w.ccy)+'</b> · 风险 <b class="down">'+(isNum(R.loss)?money(R.loss,w.ccy):'--')+'</b>'
+    +(R.dangers.length?'<div class="alert err">'+R.dangers.map(esc).join('<br>')+'</div>':'')+'</div>';
+  confirmBox(html,()=>{
+    const t={id:uid(),walletId:w.id,ccy:w.ccy,symbol:sym,side:C.side,mode:C.mode,pct:inp.pct,lev:R.lev,
+      marginMode:R.isContract?C.marginMode:'spot',mmr:inp.mmr,fee:inp.fee,
+      entries:R.batches.map(b=>({price:b.price,weight:b.w*100})),stop:nn(R.stop),tp:nn(R.tp),
+      reason:(C.reason||'').trim(),review:'',
+      calc:{avg:R.avg,N:R.N,qty:R.qty,margin:R.margin,risk:nn(R.loss),profit:nn(R.profit),rr:nn(R.rr),liq:nn(R.liq),equity:R.equity},
+      status:'open',createdAt:Date.now()};
+    S.trades.push(t); save();
+    C.reason=''; saveDraft();
+    J.f='open'; J.open[t.id]=true;
+    toast('✓ 已执行，写入交易手册'); go('journal');
+  },{raw:true,yes:'确认执行'});
+}
+
+/* ================= 手册页 ================= */
+const J={f:'all',w:'all',open:{}};
+function tradeCard(t){
+  const ccy=tccy(t), w=findW(t.walletId), c=t.calc, closed=t.status==='closed', expanded=!!J.open[t.id];
+  const st={open:['持仓中','s-open'],closed:['已平仓','s-closed'],cancelled:['已取消','s-cancel']}[t.status]||['--',''];
+  const rm=closed&&c.risk>0?(Number(t.realizedPnl)||0)/c.risk:NaN;
+  const mmT=t.marginMode==='cross'?' 全仓':t.marginMode==='isolated'?' 逐仓':'';
+  let h='<div class="card trade '+t.side+'"><div class="t-head" data-act="toggleTrade" data-id="'+t.id+'">'
+   +'<div><div class="t-sym">'+esc(t.symbol)+' <span class="badge '+t.side+'">'+(t.side==='long'?'LONG':'SHORT')+'</span><span class="badge lev">'+t.lev+'x'+mmT+'</span></div>'
+   +'<div class="t-meta">'+esc(w?w.name:'—')+' · '+dt(t.createdAt)+'</div></div>'
+   +'<div class="t-right"><span class="status '+st[1]+'">'+st[0]+'</span>'
+   +(closed?'<div class="t-pnl '+pn(t.realizedPnl)+'">'+signMoney(t.realizedPnl,ccy)+'</div><div class="t-r">'+(isNum(rm)?(rm>=0?'+':'')+rm.toFixed(2)+'R':'')+'</div>'
+          :'<div class="t-pnl neon">'+money(c.margin,ccy)+'</div><div class="t-r">保证金</div>')+'</div></div>'
+   +'<div class="grid3">'+m('均价',fmtP(c.avg))+m('止损',fmtP(t.stop),'down')+m('止盈',fmtP(t.tp),'up')+'</div>';
+  if(!expanded) return h+'<div class="t-more" data-act="toggleTrade" data-id="'+t.id+'">展开详情 ▾</div></div>';
+  let acts='';
+  if(t.status==='open') acts='<button class="btn sm" data-act="closeTrade" data-id="'+t.id+'">⏹ 平仓</button><button class="btn sm ghost" data-act="noteTrade" data-id="'+t.id+'">✎ 备注</button><button class="btn sm ghost" data-act="reuseTrade" data-id="'+t.id+'">⟳ 复用</button><button class="btn sm ghost" data-act="cancelTrade" data-id="'+t.id+'">⊘ 未成交取消</button><button class="btn sm dghost" data-act="delTrade" data-id="'+t.id+'">✕ 删除</button>';
+  else if(closed) acts='<button class="btn sm" data-act="noteTrade" data-id="'+t.id+'">✎ 复盘</button><button class="btn sm ghost" data-act="reuseTrade" data-id="'+t.id+'">⟳ 复用</button><button class="btn sm ghost" data-act="reopenTrade" data-id="'+t.id+'">↺ 撤销平仓</button><button class="btn sm dghost" data-act="delTrade" data-id="'+t.id+'">✕ 删除</button>';
+  else acts='<button class="btn sm ghost" data-act="reuseTrade" data-id="'+t.id+'">⟳ 复用</button><button class="btn sm ghost" data-act="reopenTrade" data-id="'+t.id+'">↺ 恢复持仓</button><button class="btn sm dghost" data-act="delTrade" data-id="'+t.id+'">✕ 删除</button>';
+  h+='<div class="t-detail"><div class="grid2">'
+   +m('仓位价值',money(c.N,ccy))+m('所需保证金',money(c.margin,ccy),'mag')
+   +m('数量',fmtQ(c.qty))+m('仓位模式',(t.mode==='risk'?'风险 ':'保证金 ')+t.pct+'%')
+   +m('计划风险',isNum(c.risk)?'-'+money(c.risk,ccy):'--','down')+m('计划盈利',isNum(c.profit)?'+'+money(c.profit,ccy):'--','up')
+   +m('R:R',isNum(c.rr)?'1 : '+c.rr.toFixed(2):'--')+(t.lev>1?m('预估强平',isNum(c.liq)?fmtP(c.liq):'无','mag'):m('类型','现货'))
+   +'</div><div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>#</th><th>入场价</th><th>占比</th><th>保证金</th><th>数量</th>'+(closed?'<th>成交</th>':'')+'</tr></thead><tbody>'
+   +t.entries.map((e,i)=>{ const n=c.N*e.weight/100; return '<tr><td>'+(i+1)+'</td><td>'+fmtP(e.price)+'</td><td>'+e.weight.toFixed(1)+'%</td><td class="neon">'+fmt(n/t.lev)+'</td><td>'+fmtQ(n/e.price)+'</td>'+(closed?'<td>'+((t.filled||[]).indexOf(i)>-1?'<span class="up">✓</span>':'<span class="dim">—</span>')+'</td>':'')+'</tr>'; }).join('')
+   +'</tbody></table></div>'
+   +(closed?'<div class="grid2" style="margin-top:10px">'+m('平仓方式',({tp:'止盈',sl:'止损',manual:'手动'})[t.exitType]||'--')+m('平仓价',fmtP(t.exitPrice))+m('手续费',isNum(t.fees)?money(t.fees,ccy):'--')+m('平仓时间',dt(t.closedAt))+'</div>'+(t.pnlOverridden?'<div class="help">* 盈亏为手动填写</div>':''):'')
+   +(t.reason?'<div class="t-text"><span class="dim">入场理由 ▸ </span>'+esc(t.reason)+'</div>':'')
+   +(t.review?'<div class="t-text" style="border-left-color:var(--mag)"><span class="dim">复盘 ▸ </span>'+esc(t.review)+'</div>':'')
+   +'<div class="t-actions">'+acts+'</div><div class="t-more" data-act="toggleTrade" data-id="'+t.id+'">收起 ▴</div></div></div>';
+  return h;
+}
+function renderJournal(){
+  if(J.w!=='all'&&!findW(J.w)) J.w='all';
+  const st=journalStats(J.w), c=st.ccy;
+  let list=S.trades.filter(t=>J.w==='all'||t.walletId===J.w);
+  const cnt={all:list.length,open:0,closed:0,cancelled:0}; list.forEach(t=>{cnt[t.status]=(cnt[t.status]||0)+1;});
+  if(J.f!=='all') list=list.filter(t=>t.status===J.f);
+  list.sort((a,b)=>b.createdAt-a.createdAt);
+  let h='<div class="card"><div class="label">// PLAYBOOK 交易手册</div>'
+   +'<label class="fld"><select id="j-wallet"><option value="all">全部钱包（按 '+S.settings.displayCcy+' 汇总）</option>'+S.wallets.map(w=>'<option value="'+w.id+'"'+(J.w===w.id?' selected':'')+'>'+esc(w.name)+' · '+w.ccy+'</option>').join('')+'</select></label>'
+   +'<div class="grid3">'+m('胜率',fmtPct(st.winRate,1),st.winRate>=.5?'up':'')+m('累计盈亏',signMoney(st.total,c),pn(st.total))+m('已平仓',st.n+' 笔')
+   +m('平均R',isNum(st.avgR)?(st.avgR>=0?'+':'')+st.avgR.toFixed(2)+'R':'--',pn(st.avgR))+m('盈亏因子',isNum(st.pf)?(isFinite(st.pf)?st.pf.toFixed(2):'∞'):'--')+m('最大回撤',st.mdd>0?'-'+money(st.mdd,c):'--','down')+'</div>'
+   +(st.pts.length>2?sparkSVG(st.pts):'')+'</div>'
+   +'<div class="filter">'+[['all','全部'],['open','持仓中'],['closed','已平仓'],['cancelled','已取消']].map(x=>'<button data-act="jf" data-f="'+x[0]+'" class="'+(J.f===x[0]?'on':'')+'">'+x[1]+' '+(cnt[x[0]]||0)+'</button>').join('')+'</div>';
+  if(!list.length) h+='<div class="card empty"><div class="big">NO RECORD</div><p>在「计算」页完成计算后，点「标记已执行」即可入册</p><button class="btn" data-act="go" data-v="calc">⌖ 去计算</button></div>';
+  else h+=list.map(tradeCard).join('');
+  $('#view-journal').innerHTML=h;
+}
+function closeTradeModal(id){
+  const t=findT(id); if(!t) return; const ccy=tccy(t);
+  openModal('<h3 class="m-title">⏹ 平仓 · '+esc(t.symbol)+' '+(t.side==='long'?'LONG':'SHORT')+'</h3>'
+   +'<div class="seg" id="x-type"><button data-t="tp"'+(isNum(t.tp)?'':' disabled')+'>止盈</button><button data-t="sl">止损</button><button data-t="manual" class="on">手动</button></div>'
+   +'<label class="fld"><span>平仓价</span><input id="x-price" inputmode="decimal" placeholder="成交价"></label>'
+   +'<div class="fld"><span>实际成交的批次</span>'+t.entries.map((e,i)=>'<label class="chk"><input type="checkbox" value="'+i+'" checked> #'+(i+1)+' @ '+fmtP(e.price)+'（'+e.weight.toFixed(1)+'%）</label>').join('')+'</div>'
+   +'<label class="fld"><span>实际盈亏（选填，填写后覆盖自动计算，含手续费，亏损填负数）</span><input id="x-over" type="text" placeholder="例如 -125.5"></label>'
+   +'<div id="x-preview" class="preview"></div>'
+   +'<label class="fld"><span>复盘</span><textarea id="x-review" rows="3" placeholder="执行是否按计划？情绪？可改进点？">'+esc(t.review||'')+'</textarea></label>'
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">取消</button><button class="btn" data-m="ok">确认平仓</button></div>',b=>{
+    let type='manual';
+    const price=$('#x-price',b), over=$('#x-over',b), pv=$('#x-preview',b);
+    const fills=()=>$$('.chk input',b).filter(x=>x.checked).map(x=>+x.value);
+    const upd=()=>{
+      const ex=num(price.value), ov=num(over.value), r=closePnl(t,ex,fills());
+      if(!isNum(ex)&&!isNum(ov)){ pv.innerHTML='<span class="dim">输入平仓价预览盈亏</span>'; return; }
+      const p=isNum(ov)?ov:r.pnl;
+      pv.innerHTML=(isNum(r.avg)?'成交均价 '+fmtP(r.avg)+' · 数量 '+fmtQ(r.q)+' · 手续费 '+fmt(r.fees)+'<br>':'')
+        +'盈亏 <b class="'+pn(p)+'">'+signMoney(p,ccy)+'</b>'+(t.calc.risk>0?' · <b class="'+pn(p)+'">'+(p>=0?'+':'')+(p/t.calc.risk).toFixed(2)+'R</b>':'');
+    };
+    $('#x-type',b).onclick=e=>{ const bt=e.target.closest('button'); if(!bt||bt.disabled) return; type=bt.dataset.t;
+      $$('#x-type button',b).forEach(x=>x.classList.toggle('on',x===bt));
+      if(type==='tp'&&isNum(t.tp)) price.value=t.tp; if(type==='sl'&&isNum(t.stop)) price.value=t.stop; upd(); };
+    b.addEventListener('input',upd); b.addEventListener('change',upd); upd();
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{
+      const ex=num(price.value), ov=num(over.value), fl=fills();
+      if(!isNum(ex)&&!isNum(ov)){ toast('请输入平仓价或实际盈亏','err'); return; }
+      if(!fl.length&&!isNum(ov)){ toast('未勾选成交批次；若完全未成交请用「未成交取消」','err'); return; }
+      const r=closePnl(t,ex,fl);
+      Object.assign(t,{status:'closed',exitType:type,exitPrice:nn(ex),filled:fl,fees:nn(r.fees),realizedPnl:isNum(ov)?ov:r.pnl,pnlOverridden:isNum(ov),closedAt:Date.now(),review:$('#x-review',b).value.trim()});
+      save(); closeModal(); toast('已平仓 '+signMoney(t.realizedPnl,ccy)); render();
+    };
+  });
+}
+function noteModal(id){
+  const t=findT(id); if(!t) return;
+  openModal('<h3 class="m-title">✎ 备注 / 复盘 · '+esc(t.symbol)+'</h3>'
+   +'<label class="fld"><span>入场理由</span><textarea id="n-reason" rows="3">'+esc(t.reason||'')+'</textarea></label>'
+   +'<label class="fld"><span>复盘</span><textarea id="n-review" rows="4">'+esc(t.review||'')+'</textarea></label>'
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">取消</button><button class="btn" data-m="ok">保存</button></div>',b=>{
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{ t.reason=$('#n-reason',b).value.trim(); t.review=$('#n-review',b).value.trim(); save(); closeModal(); toast('已保存'); render(); };
+  });
+}
+function reuseTrade(id){
+  const t=findT(id); if(!t) return;
+  C=Object.assign(newCalc(),{walletId:t.walletId,symbol:t.symbol,side:t.side,mode:t.mode,pct:String(t.pct),lev:t.lev>1?String(t.lev):'',
+    marginMode:t.marginMode==='cross'?'cross':'isolated',mmr:String(t.mmr),fee:String(t.fee),
+    entries:t.entries.map(e=>({price:String(e.price),weight:String(+e.weight.toFixed(2))})),
+    stop:isNum(t.stop)?String(t.stop):'',tp:isNum(t.tp)?String(t.tp):'',reason:''});
+  saveDraft(); go('calc'); toast('已载入参数到计算器');
+}
+
+/* ================= 钱包 / 资金 ================= */
+function walletModal(id,welcome){
+  const w=id?findW(id):null, hasT=w&&S.trades.some(t=>t.walletId===w.id);
+  openModal('<h3 class="m-title">'+(welcome?'◈ 欢迎接入 NEON//POS':w?'✎ 编辑钱包':'+ 新建钱包')+'</h3>'
+   +(welcome?'<div class="m-msg dim">先创建一个钱包。可按币种 / 用途建多个分钱包（如 BTC 合约、山寨现货、A 股），总资产会按汇率自动汇总。</div>':'')
+   +'<label class="fld"><span>钱包名称</span><input id="w-name" value="'+esc(w?w.name:(welcome?'USDT 主钱包':''))+'" placeholder="如：BTC合约 / A股 / 山寨现货"></label>'
+   +'<div class="fld"><span>币种</span><div class="seg" id="w-ccy" style="margin:0">'+['USDT','CNY'].map(c=>'<button type="button" data-c="'+c+'" class="'+((w?w.ccy:'USDT')===c?'on':'')+'">'+c+'</button>').join('')+'</div>'
+   +(hasT?'<div class="help" style="margin-top:6px">⚠ 已有交易记录，改币种不会换算历史金额</div>':'')+'</div>'
+   +'<label class="fld"><span>初始本金</span><input id="w-init" inputmode="decimal" value="'+(w?w.initial:'')+'" placeholder="0.00"></label>'
+   +'<label class="fld"><span>备注（选填）</span><input id="w-note" value="'+esc(w?w.note||'':'')+'" placeholder="交易所 / 用途"></label>'
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">'+(welcome?'稍后':'取消')+'</button><button class="btn" data-m="ok">保存</button></div>',b=>{
+    let ccy=w?w.ccy:'USDT';
+    $('#w-ccy',b).onclick=e=>{ const t=e.target.closest('button'); if(!t) return; ccy=t.dataset.c; $$('#w-ccy button',b).forEach(x=>x.classList.toggle('on',x===t)); };
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{
+      const name=$('#w-name',b).value.trim()||(ccy+' 钱包'), init=num($('#w-init',b).value), note=$('#w-note',b).value.trim();
+      if(!isNum(init)||init<0){ toast('请输入有效本金','err'); return; }
+      if(w) Object.assign(w,{name,ccy,initial:init,note});
+      else{ const nw={id:uid(),name,ccy,initial:init,note,createdAt:Date.now()}; S.wallets.push(nw); if(!findW(C.walletId)){ C.walletId=nw.id; saveDraft(); } }
+      save(); closeModal(); toast('钱包已保存'); render();
+    };
+  });
+}
+function delWallet(id){
+  const w=findW(id); if(!w) return; const n=S.trades.filter(t=>t.walletId===id).length;
+  confirmBox('删除钱包「'+esc(w.name)+'」？'+(n?'<br><b class="down">将同时删除其下 '+n+' 条交易记录与资金流水</b>':''),()=>{
+    S.wallets=S.wallets.filter(x=>x.id!==id); S.trades=S.trades.filter(t=>t.walletId!==id); S.flows=S.flows.filter(f=>f.walletId!==id);
+    save(); toast('已删除'); render();
+  },{danger:true,yes:'删除'});
+}
+function flowModal(id){
+  const w=findW(id); if(!w) return;
+  const flows=S.flows.filter(f=>f.walletId===id).sort((a,b)=>b.ts-a.ts);
+  openModal('<h3 class="m-title">⇅ 资金调整 · '+esc(w.name)+'</h3>'
+   +'<div class="seg" id="f-type"><button data-t="1" class="on">入金 +</button><button data-t="-1">出金 −</button></div>'
+   +'<label class="fld"><span>金额（'+w.ccy+'）</span><input id="f-amt" inputmode="decimal" placeholder="0.00"></label>'
+   +'<label class="fld"><span>备注</span><input id="f-note" placeholder="选填"></label>'
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">取消</button><button class="btn" data-m="ok">确认</button></div>'
+   +(flows.length?'<div class="label" style="margin-top:18px">// 流水记录</div>'+flows.slice(0,30).map(f=>'<div class="flow-row"><span class="dim">'+dt(f.ts)+'</span><span class="'+pn(f.amount)+'">'+signMoney(f.amount,w.ccy)+'</span><span class="dim">'+esc(f.note||'')+'</span><button class="x" data-fid="'+f.id+'">✕</button></div>').join(''):''),b=>{
+    let sign=1;
+    $('#f-type',b).onclick=e=>{ const t=e.target.closest('button'); if(!t) return; sign=+t.dataset.t; $$('#f-type button',b).forEach(x=>x.classList.toggle('on',x===t)); };
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{ const a=num($('#f-amt',b).value); if(!(a>0)){ toast('请输入有效金额','err'); return; }
+      S.flows.push({id:uid(),walletId:id,amount:sign*a,note:$('#f-note',b).value.trim(),ts:Date.now()}); save(); closeModal(); toast('已记录'); render(); };
+    $$('[data-fid]',b).forEach(x=>{ x.onclick=()=>{ S.flows=S.flows.filter(f=>f.id!==x.dataset.fid); save(); closeModal(); toast('流水已删除'); render(); }; });
+  });
+}
+function rateModal(){
+  openModal('<h3 class="m-title">⇄ 汇率设置</h3><label class="fld"><span>1 USDT = ? CNY</span><input id="r-val" inputmode="decimal" value="'+S.settings.rate+'"></label>'
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">取消</button><button class="btn" data-m="ok">保存</button></div>',b=>{
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{ const r=num($('#r-val',b).value); if(!(r>0)){ toast('汇率无效','err'); return; } S.settings.rate=r; save(); closeModal(); toast('汇率已更新'); render(); };
+  });
+}
+
+/* ================= 设置页 ================= */
+let deferredPrompt=null;
+const isStandalone=()=>{ try{ return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true; }catch(e){ return false; } };
+function renderSettings(){
+  const s=S.settings;
+  $('#view-set').innerHTML=
+   '<div class="card"><div class="label">// FX 汇率与显示</div>'
+   +'<label class="fld"><span>汇率：1 USDT = ? CNY</span><input id="s-rate" inputmode="decimal" value="'+s.rate+'"></label>'
+   +'<div class="fld"><span>总资产显示币种</span><div class="seg" style="margin:0">'+['USDT','CNY'].map(c=>'<button data-act="setDisp" data-ccy="'+c+'" class="'+(c===s.displayCcy?'on':'')+'">'+c+'</button>').join('')+'</div></div></div>'
+   +'<div class="card"><div class="label">// DEFAULTS 默认参数</div><div class="grid2">'
+   +'<label class="fld"><span>默认风险 %</span><input id="s-risk" inputmode="decimal" value="'+s.riskPct+'"></label>'
+   +'<label class="fld"><span>默认保证金 %</span><input id="s-margin" inputmode="decimal" value="'+s.marginPct+'"></label>'
+   +'<label class="fld"><span>维持保证金率 %</span><input id="s-mmr" inputmode="decimal" value="'+s.mmr+'"></label>'
+   +'<label class="fld"><span>Taker 费率 %</span><input id="s-fee" inputmode="decimal" value="'+s.fee+'"></label>'
+   +'</div><button class="btn" style="width:100%" data-act="saveSettings">保存设置</button></div>'
+   +'<div class="card"><div class="label">// DATA 数据安全</div>'
+   +'<div class="storage '+(Store.ok?'ok':'err')+'">'+(Store.ok?'● 本地存储正常 · 数据仅保存在本机浏览器':'● 存储不可用（沙箱 / 无痕模式）：当前为临时内存模式，关闭页面数据将丢失，请及时导出备份')+'</div>'
+   +'<div class="help" style="margin-bottom:10px">钱包 '+S.wallets.length+' · 交易 '+S.trades.length+' · 资金流水 '+S.flows.length+'<br>清理浏览器缓存会丢失数据，建议定期导出 JSON 备份。</div>'
+   +'<div class="btn-col"><button class="btn" data-act="exportJson">⇩ 导出 JSON 备份</button><button class="btn ghost" data-act="copyJson">⧉ 复制备份到剪贴板</button><button class="btn ghost" data-act="importJson">⇧ 导入 JSON 备份</button><button class="btn ghost" data-act="exportCsv">⇩ 导出交易 CSV（Excel）</button><button class="btn dghost" data-act="clearAll">⌫ 清空全部数据</button></div>'
+   +'<input type="file" id="s-file" accept=".json,application/json" style="display:none"></div>'
+   +'<div class="card"><div class="label">// INSTALL 安装到桌面</div>'
+   +(isStandalone()?'<div class="alert ok">✓ 已以 App 模式运行</div>'
+     :(deferredPrompt?'<button class="btn mag" style="width:100%" data-act="install">⬇ 安装到主屏幕</button>'
+       :'<div class="help">iPhone：Safari 底部 <b>分享</b> → <b>添加到主屏幕</b><br>Android：Chrome 菜单 → <b>安装应用 / 添加到主屏幕</b></div>'))+'</div>'
+   +'<div class="card"><div class="label">// FORMULA 计算说明</div><div class="help">'
+   +'<b>分批占比</b>：该批占总仓位价值的比例；均价 = 总价值 ÷ 总数量<br>'
+   +'<b>风险模式</b>：仓位价值 = 权益×风险% ÷ (止损距离% + 开仓费 + 平仓费)<br>'
+   +'<b>保证金模式</b>：仓位价值 = 权益×保证金% × 杠杆<br>'
+   +'<b>保证金</b> = 仓位价值 ÷ 杠杆（即入场所需订金额）<br>'
+   +'<b>强平价</b>（U本位线性近似）多：(N−C)/(Q×(1−MMR))；空：(N+C)/(Q×(1+MMR))；C = 逐仓保证金 / 全仓可用余额<br>'
+   +'<b>R倍数</b> = 实际盈亏 ÷ 计划风险金额<br>'
+   +'<b>权益</b> = 本金 + 净入金 + 已实现盈亏；<b>可用</b> = 权益 − 持仓占用保证金<br>'
+   +'* 强平价为估算，未含资金费率与交易所阶梯维持保证金</div></div>'
+   +'<div class="foot">NEON//POS v'+VERSION+' · LOCAL-FIRST · NO SERVER</div>';
+  const fi=$('#s-file'); if(fi) fi.onchange=importFile;
+}
+function download(name,content,type){
+  try{
+    const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=name; a.rel='noopener'; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1500); toast('已导出 '+name);
+  }catch(e){ dumpModal(content); }
+}
+function dumpModal(content){
+  openModal('<h3 class="m-title">手动复制保存</h3><textarea class="dump" readonly>'+esc(content)+'</textarea><div class="m-actions"><button class="btn ghost" data-m="cancel">关闭</button><button class="btn" data-m="copy">复制</button></div>',b=>{
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=copy]',b).onclick=()=>{ const ta=$('.dump',b); ta.select(); try{ document.execCommand('copy'); toast('已复制'); }catch(e){ toast('请长按手动复制','err'); } };
+  });
+}
+const stamp=()=>{ const d=new Date(),p=n=>String(n).padStart(2,'0'); return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes()); };
+function importFile(e){
+  const file=e.target.files&&e.target.files[0]; if(!file) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(!d||!Array.isArray(d.wallets)) throw new Error('文件格式不正确');
+      const nd=migrate(d);
+      confirmBox('导入将<b class="down">覆盖</b>当前全部数据：<br>钱包 '+nd.wallets.length+' · 交易 '+nd.trades.length+' · 流水 '+nd.flows.length,()=>{
+        S=nd; save(); C=newCalc(); saveDraft(); toast('导入成功'); render();
+      },{danger:true,yes:'覆盖导入'});
+    }catch(err){ toast('导入失败：'+err.message,'err'); }
+    e.target.value='';
+  };
+  rd.readAsText(file);
+}
+const csvCell=v=>{ v=v==null?'':String(v); return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+const rnd=(v,dp)=>isNum(v)?+v.toFixed(dp==null?4:dp):'';
+function exportCsv(){
+  if(!S.trades.length){ toast('暂无交易记录','err'); return; }
+  const head=['创建时间','钱包','币种','标的','方向','仓位模式','比例%','杠杆','保证金模式','分批(价格@占比)','加权均价','止损','止盈','仓位价值','数量','保证金','计划风险','计划盈利','R:R','预估强平','状态','平仓方式','平仓价','平仓时间','实际盈亏','R倍数','手续费','入场理由','复盘'];
+  const rows=S.trades.slice().sort((a,b)=>a.createdAt-b.createdAt).map(t=>{
+    const w=findW(t.walletId), c=t.calc||{}, closed=t.status==='closed';
+    return [dt(t.createdAt),w?w.name:'',tccy(t),t.symbol,t.side==='long'?'做多':'做空',t.mode==='risk'?'风险%':'保证金%',t.pct,t.lev,
+      ({isolated:'逐仓',cross:'全仓',spot:'现货'})[t.marginMode]||'',t.entries.map(e=>e.price+'@'+e.weight.toFixed(2)+'%').join(' | '),
+      rnd(c.avg,8),t.stop==null?'':t.stop,t.tp==null?'':t.tp,rnd(c.N,2),rnd(c.qty,8),rnd(c.margin,2),rnd(c.risk,2),rnd(c.profit,2),isNum(c.rr)?c.rr.toFixed(2):'',rnd(c.liq,8),
+      ({open:'持仓中',closed:'已平仓',cancelled:'已取消'})[t.status]||'',closed?(({tp:'止盈',sl:'止损',manual:'手动'})[t.exitType]||''):'',closed&&t.exitPrice!=null?t.exitPrice:'',closed?dt(t.closedAt):'',
+      closed?rnd(t.realizedPnl,2):'',closed&&c.risk>0?((t.realizedPnl||0)/c.risk).toFixed(2):'',closed?rnd(t.fees,2):'',t.reason||'',t.review||''];
+  });
+  download('neonpos-trades-'+stamp()+'.csv','\ufeff'+[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8');
+}
+
+/* ================= Modal ================= */
+function openModal(html,onMount){ const b=$('#modal-body'); b.innerHTML=html; $('#modal').classList.remove('hidden'); document.body.classList.add('noscroll'); if(onMount) onMount(b); }
+function closeModal(){ $('#modal').classList.add('hidden'); document.body.classList.remove('noscroll'); $('#modal-body').innerHTML=''; }
+function confirmBox(msg,onYes,opt){
+  opt=opt||{};
+  openModal((opt.raw?msg:'<h3 class="m-title">'+(opt.danger?'⚠ ':'')+'确认操作</h3><div class="m-msg">'+msg+'</div>')
+   +'<div class="m-actions"><button class="btn ghost" data-m="cancel">取消</button><button class="btn '+(opt.danger?'danger':'')+'" data-m="ok">'+(opt.yes||'确认')+'</button></div>',b=>{
+    $('[data-m=cancel]',b).onclick=closeModal;
+    $('[data-m=ok]',b).onclick=()=>{ closeModal(); onYes(); };
+  });
+}
+
+/* ================= 事件 ================= */
+const ACT={
+  go:a=>go(a.dataset.v),
+  setDisp:a=>{ S.settings.displayCcy=a.dataset.ccy; save(); render(); },
+  rate:()=>rateModal(),
+  addWallet:()=>walletModal(null),
+  editWallet:(a,id)=>walletModal(id),
+  delWallet:(a,id)=>delWallet(id),
+  flowWallet:(a,id)=>flowModal(id),
+  calcWallet:(a,id)=>{ C.walletId=id; saveDraft(); go('calc'); },
+  side:a=>{ C.side=a.dataset.side; $$('#view-calc [data-act=side]').forEach(b=>b.classList.toggle('on',b===a)); saveDraft(); updateCalc(); },
+  mode:a=>{ if(C.mode===a.dataset.mode) return; C.mode=a.dataset.mode; C.pct=String(C.mode==='risk'?S.settings.riskPct:S.settings.marginPct); $('#c-pct').value=C.pct; updateModeUI(); saveDraft(); updateCalc(); },
+  pct:a=>{ C.pct=a.dataset.val; $('#c-pct').value=C.pct; syncChips(); saveDraft(); updateCalc(); },
+  lev:a=>{ C.lev=a.dataset.val==='1'?'':a.dataset.val; $('#c-lev').value=C.lev; syncChips(); saveDraft(); updateCalc(); },
+  mm:a=>{ C.marginMode=a.dataset.mm; $$('#view-calc [data-act=mm]').forEach(b=>b.classList.toggle('on',b===a)); saveDraft(); updateCalc(); },
+  adv:a=>{ advOpen=!advOpen; $('#c-adv').classList.toggle('open',advOpen); a.textContent='⚙ 高级参数：维持保证金率 / 手续费 '+(advOpen?'▴':'▾'); },
+  addEntry:()=>{ if(C.entries.length>=10){ toast('最多 10 批','err'); return; } C.entries.push({price:'',weight:''}); splitWeights(); renderEntries(); saveDraft(); updateCalc(); },
+  delEntry:a=>{ C.entries.splice(+a.dataset.i,1); if(!C.entries.length) C.entries.push({price:'',weight:'100'}); splitWeights(); renderEntries(); saveDraft(); updateCalc(); },
+  split:()=>{ splitWeights(); renderEntries(); saveDraft(); updateCalc(); toast('已均分占比'); },
+  execute:()=>execute(),
+  resetCalc:()=>confirmBox('重置计算器全部参数？',()=>{ const wid=C.walletId; C=newCalc(); C.walletId=wid; saveDraft(); renderCalc(); }),
+  toggleTrade:(a,id)=>{ J.open[id]=!J.open[id]; renderJournal(); },
+  jf:a=>{ J.f=a.dataset.f; renderJournal(); },
+  closeTrade:(a,id)=>closeTradeModal(id),
+  noteTrade:(a,id)=>noteModal(id),
+  reuseTrade:(a,id)=>reuseTrade(id),
+  cancelTrade:(a,id)=>confirmBox('标记为「未成交取消」？将释放占用保证金，不计入胜率。',()=>{ const t=findT(id); if(t){ t.status='cancelled'; t.closedAt=Date.now(); save(); render(); toast('已取消'); } }),
+  reopenTrade:(a,id)=>confirmBox('恢复为「持仓中」？已记录的平仓数据将被清除。',()=>{ const t=findT(id); if(t){ t.status='open'; ['exitType','exitPrice','filled','fees','realizedPnl','pnlOverridden','closedAt'].forEach(k=>delete t[k]); save(); render(); toast('已恢复持仓'); } }),
+  delTrade:(a,id)=>confirmBox('永久删除这条交易记录？',()=>{ S.trades=S.trades.filter(t=>t.id!==id); save(); render(); toast('已删除'); },{danger:true,yes:'删除'}),
+  saveSettings:()=>{
+    const r=num($('#s-rate').value), rp=num($('#s-risk').value), mp=num($('#s-margin').value), mm=num($('#s-mmr').value), fe=num($('#s-fee').value);
+    if(!(r>0)){ toast('汇率无效','err'); return; }
+    Object.assign(S.settings,{rate:r,riskPct:rp>0?rp:1,marginPct:mp>0?mp:10,mmr:mm>=0?mm:0.5,fee:fe>=0?fe:0.05});
+    save(); toast('设置已保存'); render();
+  },
+  exportJson:()=>download('neonpos-backup-'+stamp()+'.json',JSON.stringify(S,null,2),'application/json'),
+  copyJson:()=>{ const txt=JSON.stringify(S); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(()=>toast('备份已复制到剪贴板'),()=>dumpModal(txt)); } else dumpModal(txt); },
+  importJson:()=>{ const f=$('#s-file'); if(f) f.click(); },
+  exportCsv:()=>exportCsv(),
+  clearAll:()=>confirmBox('<b class="down">清空全部钱包、交易与流水？</b><br>此操作不可恢复，建议先导出备份。',()=>{
+    confirmBox('最后确认：真的清空吗？',()=>{ S=migrate(null); save(); C=newCalc(); saveDraft(); toast('已清空'); go('dash'); },{danger:true,yes:'彻底清空'});
+  },{danger:true,yes:'继续'}),
+  install:async()=>{ if(!deferredPrompt){ toast('请使用浏览器菜单「添加到主屏幕」'); return; } deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(e){} deferredPrompt=null; renderSettings(); }
+};
+function onClick(e){
+  const a=e.target.closest('[data-act]'); if(!a||a.disabled) return;
+  const fn=ACT[a.dataset.act]; if(!fn) return;
+  e.preventDefault();
+  try{ fn(a,a.dataset.id); }catch(err){ console.error(err); toast('操作出错：'+err.message,'err'); }
+}
+const FIELD_MAP={'c-symbol':'symbol','c-pct':'pct','c-lev':'lev','c-mmr':'mmr','c-fee':'fee','c-stop':'stop','c-tp':'tp','c-reason':'reason'};
+function onCalcInput(e){
+  const t=e.target;
+  if(t.dataset.k){ const i=+t.dataset.i; if(C.entries[i]) C.entries[i][t.dataset.k]=t.value; }
+  else{ const k=FIELD_MAP[t.id]; if(!k) return; C[k]=t.value; if(k==='lev'||k==='pct') syncChips(); }
+  saveDraft();
+  if(t.id!=='c-reason'&&t.id!=='c-symbol') updateCalc();
+}
+function updNet(){ const n=$('#net'); if(!n) return; const on=navigator.onLine!==false; n.textContent=on?'● ONLINE':'● OFFLINE'; n.classList.toggle('off',!on); }
+function registerSW(){
+  try{
+    if('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && window.isSecureContext){
+      window.addEventListener('load',()=>{ navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('SW 注册失败',err)); });
+    }
+  }catch(e){ console.warn(e); }
+}
+
+/* ================= 启动 ================= */
+function init(){
+  document.addEventListener('click',onClick);
+  $('#view-calc').addEventListener('input',onCalcInput);
+  $('#view-calc').addEventListener('change',e=>{ if(e.target.id==='c-wallet'){ C.walletId=e.target.value; saveDraft(); updateCalc(); } });
+  $('#view-journal').addEventListener('change',e=>{ if(e.target.id==='j-wallet'){ J.w=e.target.value; renderJournal(); } });
+  $('#modal').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
+  window.addEventListener('online',updNet); window.addEventListener('offline',updNet); updNet();
+  window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; if(curView==='set') renderSettings(); });
+  window.addEventListener('error',e=>{ console.error(e.error||e.message); });
+  go('dash');
+  if(!Store.ok) setTimeout(()=>toast('⚠ 本地存储不可用：临时模式，请导出备份','err'),700);
+  if(!S.wallets.length) setTimeout(()=>walletModal(null,true),450);
+  registerSW();
+}
+try{ init(); }
+catch(e){ console.error(e); document.body.insertAdjacentHTML('beforeend','<div style="position:fixed;inset:auto 0 0 0;padding:16px;background:#1a0008;color:#ff3b6b;font-family:monospace;z-index:999">启动失败：'+esc(e&&e.message)+'</div>'); }
+})();
+</script>
+</body>
+</html>
